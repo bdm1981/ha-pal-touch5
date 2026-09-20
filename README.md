@@ -10,16 +10,18 @@ frame format. No cloud account is needed.
 - CH2: hot-tub heater relay (verified; entity disabled by default)
 - CH3: hot-tub blower relay (verified)
 - CH4: not exposed; the connected load is not confirmed
-- CH5: pool/spa light ON/OFF (verified)
+- CH5: pool/spa light ON/OFF and Red/Green/Blue color presets (verified)
 
-The color frame's red command was verified on this installation. A published
-color-wheel mapping for another PAL controller did not work here: a blue
-request remained red. Color control is therefore withheld from the Home
-Assistant light entity until this Touch-5's own app traffic is captured and
-the mapping physically verified.
+The TOUCH-5 app's color frame was captured and verified directly. Red, green,
+and blue bytes from the community `pallight` map also produced the expected
+physical colors when sent in that TOUCH-5 frame. The Home Assistant selector
+exposes only those verified presets. Turn the light on before selecting a
+color. Full-wheel color, saturation, and absolute brightness are not exposed.
+Home Assistant's native HS light mode implies controls this controller has
+not yet been shown to support.
 
 The controller ACKs commands but does **not** report reliable physical relay
-state. Switches therefore show the last acknowledged command as an assumed
+state. Switches and the color selector therefore show the last acknowledged command as an assumed
 state. A restored state after Home Assistant restarts is display-only: this
 integration never replays an ON command at startup. Commands issued through
 the PAL app or another controller can make Home Assistant's displayed state

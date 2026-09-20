@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
-PLATFORMS = ["switch", "light"]
+PLATFORMS = ["switch", "light", "select"]
 CONF_HOST = "host"
 
 
@@ -34,6 +34,11 @@ class Touch5Hub:
         """Serialize CH5 light commands with the equipment relays."""
         async with self.lock:
             await hass.async_add_executor_job(self.client.set_light_power, turn_on)
+
+    async def set_light_color(self, hass: HomeAssistant, hue_byte: int) -> None:
+        """Serialize a verified CH5 color command with other commands."""
+        async with self.lock:
+            await hass.async_add_executor_job(self.client.set_light_color_byte, hue_byte)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

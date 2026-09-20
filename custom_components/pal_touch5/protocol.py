@@ -110,17 +110,17 @@ def light_power_frame(token: bytes, turn_on: bool) -> bytes:
     return bytes(frame)
 
 
-def light_color_frame(token: bytes, hue_byte: int) -> bytes:
-    """Build the captured 0x83 color frame with an unmapped raw wheel byte."""
-    if len(token) != 2 or not 0 <= hue_byte <= 255:
-        raise ValueError("Invalid session token or hue byte")
+def light_color_frame(token: bytes, sequence: int, hue_byte: int) -> bytes:
+    """Build the app-observed 0x80 color frame with an unmapped wheel byte."""
+    if len(token) != 2 or not 0 <= sequence <= 65535 or not 0 <= hue_byte <= 255:
+        raise ValueError("Invalid session token, sequence, or hue byte")
     frame = bytearray(22)
-    frame[0] = 0x83
+    frame[0] = 0x80
     frame[4] = 0x11
     frame[5:7] = token
-    frame[8] = 1
+    frame[7:9] = sequence.to_bytes(2, "big")
     frame[10] = 0xA1
-    frame[13] = 1
+    frame[13] = 5
     frame[14] = 2
     frame[15:19] = bytes((hue_byte,)) * 4
     frame[21] = sum(frame[10:21]) & 0xFF
@@ -219,11 +219,12 @@ class Touch5Client:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.connect((self.host, UDP_PORT))
             token = self._open_session(sock)
-            sock.send(light_color_frame(token, hue_byte))
+            sequence = secrets.randbelow(65535) + 1
+            sock.send(light_color_frame(token, sequence, hue_byte))
             deadline = time.monotonic() + self.timeout
             while True:
-                ack = self._receive_kind(sock, 0x8B, deadline)
-                if len(ack) >= 7 and ack[5:7] != b"\x00\x01":
+                ack = self._receive_kind(sock, 0x88, deadline)
+                if len(ack) >= 7 and ack[5:7] != sequence.to_bytes(2, "big"):
                     continue
-                parse_light_ack(ack)
+                parse_relay_ack(ack, sequence)
                 return
