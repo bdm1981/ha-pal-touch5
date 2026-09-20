@@ -90,20 +90,22 @@ def parse_relay_ack(frame: bytes, sequence: int) -> None:
         raise ProtocolError(f"Controller rejected command (status {frame[7]})")
 
 
-def light_power_frame(token: bytes, turn_on: bool) -> bytes:
-    """Build the CH5 light-power frame (0x83) used by this TOUCH-5.
+def light_power_frame(token: bytes, sequence: int, turn_on: bool) -> bytes:
+    """Build the app-observed 0x80 CH5 ON/OFF frame.
 
-    Both power actions were physically verified on this installation.
+    The native PAL app sends A1/05/01/01 for ON and A1/05/01/02 for OFF,
+    with a sequence-numbered 0x88 acknowledgment. The 0x83 frame used by
+    earlier versions was ACKed but did not reliably turn this light off.
     """
-    if len(token) != 2:
-        raise ValueError("Session token must be two bytes")
+    if len(token) != 2 or not 0 <= sequence <= 65535:
+        raise ValueError("Invalid session token or sequence")
     frame = bytearray(22)
-    frame[0] = 0x83
+    frame[0] = 0x80
     frame[4] = 0x11
     frame[5:7] = token
-    frame[8] = 1
+    frame[7:9] = sequence.to_bytes(2, "big")
     frame[10] = 0xA1
-    frame[13] = 1
+    frame[13] = 5
     frame[14] = 1
     frame[15] = 1 if turn_on else 2
     frame[21] = sum(frame[10:21]) & 0xFF
@@ -127,14 +129,9 @@ def light_color_frame(token: bytes, sequence: int, hue_byte: int) -> bytes:
     return bytes(frame)
 
 
-def parse_light_ack(frame: bytes) -> None:
-    """Validate the observed 0x8B reply to a CH5 command."""
-    if len(frame) < 8 or frame[0] != 0x8B or frame[4] != 0x03:
-        raise ProtocolError("Invalid light acknowledgment")
-    if frame[5:7] != b"\x00\x01":
-        raise ProtocolError("Light acknowledgment has the wrong sequence")
-    if frame[7] != 0:
-        raise ProtocolError(f"Controller rejected light command (status {frame[7]})")
+def parse_light_ack(frame: bytes, sequence: int) -> None:
+    """Validate the app-observed 0x88 reply to a CH5 power command."""
+    parse_relay_ack(frame, sequence)
 
 
 @dataclass(frozen=True)
@@ -199,17 +196,18 @@ class Touch5Client:
                 return
 
     def set_light_power(self, turn_on: bool) -> None:
-        """Send one CH5 light-power command and require its matching ACK."""
+        """Send the native app's CH5 power command and require its ACK."""
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.connect((self.host, UDP_PORT))
             token = self._open_session(sock)
-            sock.send(light_power_frame(token, turn_on))
+            sequence = secrets.randbelow(65535) + 1
+            sock.send(light_power_frame(token, sequence, turn_on))
             deadline = time.monotonic() + self.timeout
             while True:
-                ack = self._receive_kind(sock, 0x8B, deadline)
-                if len(ack) >= 7 and ack[5:7] != b"\x00\x01":
+                ack = self._receive_kind(sock, 0x88, deadline)
+                if len(ack) >= 7 and ack[5:7] != sequence.to_bytes(2, "big"):
                     continue
-                parse_light_ack(ack)
+                parse_light_ack(ack, sequence)
                 return
 
     def set_light_color_byte(self, hue_byte: int) -> None:

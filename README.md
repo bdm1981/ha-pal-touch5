@@ -12,7 +12,7 @@ frame format. No cloud account is needed.
 - CH4: not exposed; the connected load is not confirmed
 - CH5: pool/spa light ON/OFF and Red/Green/Blue color presets (verified)
 
-The TOUCH-5 app's color frame was captured and verified directly. Red, green,
+The TOUCH-5 app's CH5 ON/OFF and color frames were captured directly. Red, green,
 and blue bytes from the community `pallight` map also produced the expected
 physical colors when sent in that TOUCH-5 frame. The Home Assistant selector
 exposes only those verified presets. Turn the light on before selecting a

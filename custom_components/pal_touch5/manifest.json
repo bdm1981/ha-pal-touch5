@@ -1,7 +1,7 @@
 {
   "domain": "pal_touch5",
   "name": "PAL TOUCH-5",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "config_flow": true,
   "integration_type": "device",
   "iot_class": "assumed_state",

@@ -104,16 +104,20 @@ class ProtocolTests(unittest.TestCase):
 
     def test_ch5_light_power_and_ack(self) -> None:
         for turn_on, action in ((True, 1), (False, 2)):
-            frame = light_power_frame(TEST_TOKEN, turn_on)
+            frame = light_power_frame(TEST_TOKEN, 0x5678, turn_on)
             self.assertEqual(len(frame), 22)
-            self.assertEqual(frame[:5], bytes.fromhex("8300000011"))
-            self.assertEqual(frame[5:9], bytes.fromhex("12340001"))
+            self.assertEqual(frame[:5], bytes.fromhex("8000000011"))
+            self.assertEqual(frame[5:9], bytes.fromhex("12345678"))
             self.assertEqual(frame[10], 0xA1)
-            self.assertEqual(frame[13:16], bytes((1, 1, action)))
+            self.assertEqual(frame[13:16], bytes((5, 1, action)))
             self.assertEqual(frame[21], sum(frame[10:21]) & 0xFF)
-        parse_light_ack(bytes.fromhex("8b00000003000100"))
+        self.assertEqual(
+            light_power_frame(TEST_TOKEN, 0x5678, False).hex(),
+            "80000000111234567800a100000501020000000000a9",
+        )
+        parse_light_ack(bytes.fromhex("8800000003567800"), 0x5678)
         with self.assertRaises(ProtocolError):
-            parse_light_ack(bytes.fromhex("8b00000003000101"))
+            parse_light_ack(bytes.fromhex("8800000003567801"), 0x5678)
 
     def test_app_observed_blue_color_frame(self) -> None:
         frame = light_color_frame(TEST_TOKEN, 0x5678, 0xFE)
@@ -125,12 +129,15 @@ class ProtocolTests(unittest.TestCase):
             light_color_frame(TEST_TOKEN, 0x5678, 256)
 
     def test_light_sends_only_ch5_frame(self) -> None:
-        fake = FakeSocket([hello_response(), bytes.fromhex("8b00000003000100")])
+        fake = FakeSocket([hello_response(), bytes.fromhex("8800000003123400")])
         client = Touch5Client("192.0.2.10", TEST_MAC, TEST_PREFIX)
-        with patch("custom_components.pal_touch5.protocol.socket.socket", return_value=fake):
+        with (
+            patch("custom_components.pal_touch5.protocol.socket.socket", return_value=fake),
+            patch("custom_components.pal_touch5.protocol.secrets.randbelow", return_value=0x1233),
+        ):
             client.set_light_power(False)
-        self.assertEqual([frame[0] for frame in fake.sent], [0x23, 0x33, 0x83])
-        self.assertEqual(fake.sent[-1][15], 2)
+        self.assertEqual([frame[0] for frame in fake.sent], [0x23, 0x33, 0x80])
+        self.assertEqual(fake.sent[-1][13:16], bytes.fromhex("050102"))
 
     def test_color_sends_only_ch5_frame(self) -> None:
         fake = FakeSocket([hello_response(), bytes.fromhex("8800000003123400")])
