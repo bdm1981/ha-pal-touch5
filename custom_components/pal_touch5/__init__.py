@@ -4,17 +4,29 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .const import CONF_MAC, CONF_REQUEST_PREFIX
+from .const import CONF_MAC, CONF_REQUEST_PREFIX, DOMAIN
 from .protocol import Touch5Client
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
-PLATFORMS = ["switch", "light", "select"]
+PLATFORMS = ["switch", "light", "select", "number"]
 CONF_HOST = "host"
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Serve the optional color-wheel card bundled with this integration."""
+    from homeassistant.components.http import StaticPathConfig
+
+    card_path = Path(__file__).parent / "frontend" / "pal-touch5-wheel.js"
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig("/pal_touch5/pal-touch5-wheel.js", str(card_path), False)]
+    )
+    return True
 
 
 @dataclass

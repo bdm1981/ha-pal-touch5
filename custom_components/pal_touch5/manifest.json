@@ -1,12 +1,13 @@
 {
   "domain": "pal_touch5",
   "name": "PAL TOUCH-5",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "config_flow": true,
   "integration_type": "device",
   "iot_class": "assumed_state",
   "documentation": "https://github.com/bdm1981/ha-pal-touch5",
   "issue_tracker": "https://github.com/bdm1981/ha-pal-touch5/issues",
   "codeowners": ["@bdm1981"],
-  "requirements": []
+  "requirements": [],
+  "dependencies": ["http"]
 }

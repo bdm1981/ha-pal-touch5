@@ -11,17 +11,38 @@ frame format. No cloud account is needed.
 - CH3: hot-tub blower relay (verified)
 - CH4: not exposed; the connected load is not confirmed
 - CH5: pool/spa light ON/OFF and Red/Green/Blue color presets (verified)
+- CH5 color wheel: a 0–359° PAL-app wheel-position control and optional
+  dashboard card; six clock positions were captured on this TOUCH-5
 
 The TOUCH-5 app's CH5 ON/OFF and color frames were captured directly. Red, green,
 and blue bytes from the community `pallight` map also produced the expected
 physical colors when sent in that TOUCH-5 frame. The Home Assistant selector
-exposes only those verified presets. Turn the light on before selecting a
-color. Full-wheel color, saturation, and absolute brightness are not exposed.
-Home Assistant's native HS light mode implies controls this controller has
-not yet been shown to support.
+exposes those verified presets. The wheel-position number entity reproduces
+the PAL app's wheel from six directly captured clock positions. Values between
+the captured positions are interpolated, so exact shades may differ slightly.
+Turn the light on before selecting a color. Saturation and absolute brightness
+are not exposed: Home Assistant's native HS light mode implies controls this
+controller has not yet been shown to support.
+
+To use the optional wheel card, add a dashboard resource of type **JavaScript
+module** with URL `/pal_touch5/pal-touch5-wheel.js?v=0.3.0`, then add a Manual
+card with the entity IDs from your own PAL device:
+
+```yaml
+type: custom:pal-touch5-wheel-card
+entity: number.your_pool_spa_light_wheel_position
+light: light.your_pool_spa_lights
+```
+
+The card sends one color command on release, rather than flooding the controller
+while you drag. It has keyboard arrow-key support. The wheel and position number
+show the last acknowledged command, not a physical color measurement. The
+PAL app or another controller can make their display stale. Changing the
+Red/Green/Blue preset does not update the wheel-position number's display,
+or vice versa.
 
 The controller ACKs commands but does **not** report reliable physical relay
-state. Switches and the color selector therefore show the last acknowledged command as an assumed
+state. Switches and color controls therefore show the last acknowledged command as an assumed
 state. A restored state after Home Assistant restarts is display-only: this
 integration never replays an ON command at startup. Commands issued through
 the PAL app or another controller can make Home Assistant's displayed state
