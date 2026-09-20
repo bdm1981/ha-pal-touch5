@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect PAL TOUCH-5",
+        "description": "The session request prefix may contain private device credentials. Enter it only here in Home Assistant; do not commit it to GitHub. Setup sends a non-actuating handshake only.",
+        "data": {
+          "host": "Controller IPv4 address",
+          "mac": "Controller MAC address",
+          "request_prefix": "22-byte session request prefix (hex)"
+        }
+      }
+    },
+    "error": {
+      "invalid_settings": "Check the IP address, MAC address, and 22-byte prefix.",
+      "cannot_connect": "Could not complete a read-only handshake with this controller."
+    },
+    "abort": {
+      "already_configured": "This controller is already configured."
+    }
+  }
+}

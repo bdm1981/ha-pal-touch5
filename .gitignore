@@ -1,0 +1,14 @@
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+.venv/
+.coverage
+*.pcap
+*.pcapng
+*.capture
+*.log
+.env
+private/
+secrets.yaml
+.DS_Store
