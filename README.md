@@ -25,7 +25,7 @@ are not exposed: Home Assistant's native HS light mode implies controls this
 controller has not yet been shown to support.
 
 To use the optional wheel card, add a dashboard resource of type **JavaScript
-module** with URL `/pal_touch5/pal-touch5-wheel.js?v=0.3.0`, then add a Manual
+module** with URL `/pal_touch5/pal-touch5-wheel.js?v=0.3.1`, then add a Manual
 card with the entity IDs from your own PAL device:
 
 ```yaml
@@ -34,8 +34,10 @@ entity: number.your_pool_spa_light_wheel_position
 light: light.your_pool_spa_lights
 ```
 
-The card sends one color command on release, rather than flooding the controller
-while you drag. It has keyboard arrow-key support. The wheel and position number
+The card stays compact: its power toggle sends CH5 ON/OFF, and its Color button
+opens the wheel in a dialog. The card sends one color command on release,
+rather than flooding the controller while you drag. It has keyboard arrow-key
+support. The wheel and position number
 show the last acknowledged command, not a physical color measurement. The
 PAL app or another controller can make their display stale. Changing the
 Red/Green/Blue preset does not update the wheel-position number's display,

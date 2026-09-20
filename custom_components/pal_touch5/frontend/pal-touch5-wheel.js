@@ -7,8 +7,29 @@ class PalTouch5WheelCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>
-        ha-card { padding: 20px; text-align: center; }
-        h2 { font-size: 1.15rem; margin: 0 0 14px; }
+        ha-card { padding: 12px 14px; }
+        .summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .title { display: flex; flex-direction: column; min-width: 0; }
+        .title strong { font-size: .95rem; }
+        .state, .note { color: var(--secondary-text-color); font-size: .8rem; }
+        .actions { display: flex; gap: 8px; flex-shrink: 0; }
+        button {
+          background: var(--primary-color); border: 0; border-radius: 8px;
+          color: white; padding: 8px 12px; cursor: pointer; font: inherit;
+        }
+        button:disabled { opacity: .5; cursor: default; }
+        .error { color: var(--error-color, #db4437); font-size: .8rem; }
+        .error:empty { display: none; }
+        dialog {
+          box-sizing: border-box; width: min(350px, calc(100vw - 32px));
+          padding: 20px; border: 0; border-radius: 16px;
+          color: var(--primary-text-color); background: var(--card-background-color, #fff);
+          box-shadow: 0 8px 32px #0005; text-align: center;
+        }
+        dialog::backdrop { background: #0009; }
+        .dialog-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        h2 { font-size: 1.15rem; margin: 0; }
+        .close { background: transparent; color: var(--primary-text-color); padding: 5px 8px; }
         .wheel {
           position: relative; width: 220px; height: 220px; margin: auto;
           border-radius: 50%; touch-action: none; cursor: crosshair;
@@ -27,36 +48,38 @@ class PalTouch5WheelCard extends HTMLElement {
           display: none; pointer-events: none;
         }
         .readout { margin: 14px 0 6px; font-weight: 600; }
-        .note { color: var(--secondary-text-color); font-size: .84rem; }
-        .actions { display: flex; justify-content: center; gap: 12px; margin-top: 14px; }
-        button {
-          background: var(--primary-color); border: 0; border-radius: 8px;
-          color: var(--text-primary-color, white); padding: 8px 20px;
-          cursor: pointer; font: inherit;
-        }
-        button:disabled { opacity: .5; cursor: default; }
-        .error { color: var(--error-color, #db4437); min-height: 1.3em; }
       </style>
       <ha-card>
-        <h2>Pool/spa lights</h2>
+        <div class="summary">
+          <div class="title"><strong>Pool/spa lights</strong><span class="state">Unknown</span></div>
+          <div class="actions"><button class="power" type="button">Turn on</button>
+            <button class="color" type="button">Color</button></div>
+        </div>
+        <div class="error" role="status"></div>
+      </ha-card>
+      <dialog aria-label="Pool/spa light color wheel">
+        <div class="dialog-head"><h2>Color wheel</h2>
+          <button class="close" type="button" aria-label="Close color wheel">Close</button></div>
         <div class="wheel" role="slider" tabindex="0" aria-label="PAL wheel position"
              aria-valuemin="0" aria-valuemax="359">
           <div class="marker"></div>
         </div>
         <div class="readout">Choose a wheel position</div>
         <div class="note">Six app-captured anchors · last command, not measured state</div>
-        <div class="actions"><button class="on" type="button">On</button>
-          <button class="off" type="button">Off</button></div>
-        <div class="error" role="status"></div>
-      </ha-card>`;
+      </dialog>`;
     this._wheel = this.shadowRoot.querySelector(".wheel");
+    this._dialog = this.shadowRoot.querySelector("dialog");
     this._wheel.addEventListener("pointerdown", (event) => this._start(event));
     this._wheel.addEventListener("pointermove", (event) => this._move(event));
     this._wheel.addEventListener("pointerup", (event) => this._end(event));
     this._wheel.addEventListener("pointercancel", () => this._cancel());
     this._wheel.addEventListener("keydown", (event) => this._key(event));
-    this.shadowRoot.querySelector(".on").addEventListener("click", () => this._power(true));
-    this.shadowRoot.querySelector(".off").addEventListener("click", () => this._power(false));
+    this.shadowRoot.querySelector(".power").addEventListener("click", () => this._power());
+    this.shadowRoot.querySelector(".color").addEventListener("click", () => this._dialog.showModal());
+    this.shadowRoot.querySelector(".close").addEventListener("click", () => this._dialog.close());
+    this._dialog.addEventListener("click", (event) => {
+      if (event.target === this._dialog) this._dialog.close();
+    });
   }
 
   setConfig(config) {
@@ -75,7 +98,7 @@ class PalTouch5WheelCard extends HTMLElement {
     this._render();
   }
 
-  getCardSize() { return 5; }
+  getCardSize() { return 1; }
 
   _hueFromPoint(event) {
     const box = this._wheel.getBoundingClientRect();
@@ -146,8 +169,9 @@ class PalTouch5WheelCard extends HTMLElement {
     }
   }
 
-  async _power(on) {
+  async _power() {
     if (this._busy || !this._hass || !this._config?.light) return;
+    const on = this._hass.states[this._config.light]?.state !== "on";
     this._busy = true;
     this._render();
     try {
@@ -177,11 +201,16 @@ class PalTouch5WheelCard extends HTMLElement {
     }
     this.shadowRoot.querySelector(".readout").textContent =
       hue == null ? "Choose a wheel position" : `${hue}° on PAL wheel`;
-    const hasLight = Boolean(this._config?.light);
-    this.shadowRoot.querySelector(".actions").style.display = hasLight ? "flex" : "none";
-    this.shadowRoot.querySelectorAll("button").forEach((button) => {
-      button.disabled = this._busy || !this._hass;
-    });
+    const lightState = this._hass?.states[this._config?.light]?.state;
+    this.shadowRoot.querySelector(".state").textContent =
+      lightState === "on" ? "On · assumed" :
+      lightState === "off" ? "Off · assumed" : "Unknown state";
+    const power = this.shadowRoot.querySelector(".power");
+    power.textContent = lightState === "on" ? "Turn off" : "Turn on";
+    power.setAttribute("aria-pressed", lightState === "on" ? "true" : "false");
+    power.disabled = this._busy || !this._hass || !this._config?.light ||
+      lightState === "unavailable";
+    this.shadowRoot.querySelector(".color").disabled = this._busy || !this._hass;
     this.shadowRoot.querySelector(".error").textContent = this._error || "";
   }
 }
@@ -191,5 +220,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "pal-touch5-wheel-card",
   name: "PAL TOUCH-5 color wheel",
-  description: "PAL-app wheel color control with separate power buttons",
+  description: "Compact power toggle with a color-wheel dialog",
 });
